@@ -15,6 +15,7 @@ cubism.v1.js: \
 	src/librato.js \
 	src/graphite.js \
 	src/gangliaWeb.js \
+	src/opentsdb.js \
 	src/metric.js \
 	src/metric-constant.js \
 	src/metric-operator.js \
