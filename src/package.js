@@ -2,9 +2,9 @@ var util = require("util");
 
 navigator = {} 
 
-var d3 = require("d3"),
-    cubism = require("../cubism.v1").cubism;
-
+GLOBAL.d3 = require("d3");
+var cubism = require("../cubism.v1").cubism;
+    
 util.puts(JSON.stringify({
   "name": "cubism",
   "version": cubism.version,
