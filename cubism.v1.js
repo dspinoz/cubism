@@ -618,7 +618,6 @@ cubism_contextPrototype.opentsdb = function(host) {
                 j++;
               }
             }
-            console.log(out.length, out.filter(function(d) { return d._set; }).length);
             callback(null, out.map(function(d) { return d.value; }));
           }
           else
