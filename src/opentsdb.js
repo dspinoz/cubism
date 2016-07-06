@@ -1,28 +1,95 @@
-cubism_contextPrototype.opentsdb = function(host,port) {
+cubism_contextPrototype.opentsdb = function(host) {
   if (!arguments.length) {
     host = "";
-    port = 4242;
   }
   var source = {},
       context = this;
 
-  source.metric = function(expression) {
+  function buildExpression(e, step) {
+    
+    if (e.constructor === String) {
+      return e;
+    }
+    else if (e.constructor !== Object) {
+      return undefined;
+    }
+    
+    var out = "";
+    out += e.aggregator ? e.aggregator : "sum";
+    out += ":";
+    if (e.downsample) {
+      out += e.downsample.interval ? e.downsample.interval : step + "ms";
+      out += "-";
+      out += e.downsample.aggregator ? e.downsample.aggregator : "avg";
+      out += "-";
+      out += e.downsample.fillpolicy ? e.downsample.fillpolicy : "none";
+    }
+    else {
+      out += step + "ms-avg-none";
+    }
+    out += ":";
+    out += e.metric ? e.metric : "metric";
+    return out;
+  }
+      
+  source.metric = function(expression, title, dataCallback) {
+    
+    if (!dataCallback && typeof title === "function") {
+      dataCallback = title;
+      title = undefined;
+    }
+  
+    var expr = buildExpression(expression, step);
+  
+    if (!title) title=expr;
     return context.metric(function(start, stop, step, callback) {
-      d3.json(host + "/api/query"
-          //+ "?expression=" + encodeURIComponent(expression)
-          + "&start=" + cubism_cubeFormatDate(start)
-          + "&stop=" + cubism_cubeFormatDate(stop)
-          //+ "&step=" + step
-        , function(data) {
+      
+      d3.json('http://' + host + "/api/query"
+        // TODO support millisecond precision
+        + "?start=" + (start.valueOf() / 1000) 
+        + "&end=" + (stop.valueOf() / 1000)
+        + "&m=" + encodeURIComponent(expr), 
+          
+        function(data) {
+          
           if (!data) return callback(new Error("unable to load data"));
-          callback(null, data.map(function(d) { return d.value; }));
+          data = d3.entries(data[0].dps);
+          
+          data.forEach(function(d) { d.key = +d.key; });
+          
+          var sorted = data
+            // ensure time sorted, oldest to newest
+            .sort(function(a,b) {
+              return d3.ascending(a.key, b.key);
+            });
+            
+          // interpolate additional data that is "missing"
+          var out = d3.range(start.valueOf()/1000, stop.valueOf()/1000, step/1000)
+            .map(function(d) { return {key:d, value:0}; })
+          
+          for (var i = 0, j = 0; i < out.length && j < sorted.length; i++) {
+            if (out[i].key == sorted[j].key) {
+              
+              if (dataCallback) {
+                out[i].value = dataCallback(sorted[j]);
+              }
+              else {
+                out[i].value = sorted[j].value;
+              }
+              
+              out[i]._set = true;
+              j++;
+            }
+          }
+          
+          callback(null, out.map(function(d) { return d.value; }));
         });
-    }, expression += "");
+    }, title);
   };
 
   // Returns the OpenTSDB server
   source.toString = function() {
-    return host + ":" + port;
+    return host;
   };
 
   return source;
