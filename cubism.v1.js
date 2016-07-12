@@ -562,6 +562,23 @@ cubism_contextPrototype.opentsdb = function(host) {
     else {
       out += step + "ms-avg-zero";
     }
+    if (e.rate) {
+      out += ":rate";
+      if (e.rate.counter) {
+        if (e.rate.counter.reset && e.rate.counter.max) {
+          out += "{counter,"+e.rate.counter.max+","+e.rate.counter.reset+"}";
+        }
+        else if (e.rate.counter.reset && !e.rate.counter.max) {
+          out += "{counter,,"+e.rate.counter.reset+"}";
+        }
+        else if (!e.rate.counter.reset && e.rate.counter.max) {
+          out += "{counter,"+e.rate.counter.max+"}";
+        }
+        else {
+          out += "{dropcounter}";
+        }
+      }
+    }
     out += ":";
     out += e.metric ? e.metric : "metric";
     return out;
